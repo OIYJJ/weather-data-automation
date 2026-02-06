@@ -59,23 +59,6 @@ def calculate_di(temp, humid):
     except:
         return ""
 
-def clean_weather_text(text):
-    """
-    Weather_Text를 보기 좋게 정제합니다.
-    입력: {박무}0020-{박무}{강도0}0300...
-    출력: 박무 0020-0300, 연무... (괄호 및 강도 제거)
-    """
-    if not text:
-        return ""
-    
-    # 1. { } 괄호 제거
-    cleaned = text.replace("{", "").replace("}", "")
-    # 2. '강도0', '강도1' 등 불필요한 기술 용어 제거
-    cleaned = re.sub(r"강도\d+", "", cleaned)
-    # 3. 불필요한 하이픈 반복 정리
-    cleaned = cleaned.replace("--", "-")
-    return cleaned
-
 def extract_tags(text):
     """
     Secondary_Tags를 위해 핵심 날씨 현상만 추출 (중복 제거)
@@ -138,67 +121,60 @@ def main():
         
         raw_weather_text = weather.get('iscs', '')
 
-        # --- 데이터 가공 로직 강화 ---
-        
-        # 1. 텍스트 정제
-        weather_text_cleaned = clean_weather_text(raw_weather_text)
+        # --- 데이터 가공 ---
         secondary_tags = extract_tags(raw_weather_text)
 
-        # 2. Precip_Type 결정 로직 (텍스트 포함 검사)
+        # Precip_Type 결정 로직
         precip_type = ""
-        # 텍스트에 비/눈 관련 단어가 있거나, 강수량이 0보다 크면
         if "비" in raw_weather_text or "소나기" in raw_weather_text:
             precip_type = "Rain"
         elif "눈" in raw_weather_text:
             precip_type = "Snow"
         elif "진눈깨비" in raw_weather_text:
             precip_type = "Sleet"
-        elif float(precipitation) > 0: # 텍스트엔 없지만 강수량이 찍힌 경우
+        elif float(precipitation) > 0:
             precip_type = "Rain"
         else:
             precip_type = "None"
 
-        # 3. Primary_Tag 로직
+        # Primary_Tag 로직
         primary_tag = "Sunny"
         try:
             rn_val = float(precipitation)
             cc_val = float(cloud_cover if cloud_cover else 0)
             
-            # 비가 왔거나 강수 형태가 있으면 Rainy
             if rn_val > 0 or precip_type in ["Rain", "Snow", "Sleet"]:
                 primary_tag = "Rainy" if precip_type == "Rain" else "Snowy"
                 if precip_type == "Sleet": primary_tag = "Rainy"
-            # 구름이 많으면 Cloudy
-            elif cc_val >= 6.0: # 흐림 기준
+            elif cc_val >= 6.0:
                 primary_tag = "Cloudy"
-            elif cc_val >= 3.0: # 구름 조금
+            elif cc_val >= 3.0:
                 primary_tag = "Partly Cloudy"
             else:
                 primary_tag = "Sunny"
         except:
             pass
         
-        # 4. 한국 시간(KST) 구하기
-        # GitHub 서버 시간(UTC) + 9시간
+        # 한국 시간(KST) 구하기
         kst_now = datetime.now() + timedelta(hours=9)
         updated_at = kst_now.strftime("%Y-%m-%d %H:%M:%S")
 
+        # --- 최종 데이터 순서 (N열 = Updated_At) ---
         row = [
-            date_display,
-            weather.get('stnId'),
-            weather.get('stnNm'),
-            avg_temp,
-            max_temp,
-            min_temp,
-            precipitation,
-            humidity,
-            cloud_cover,
-            di_val,
-            precip_type,        # 수정됨
-            primary_tag,
-            secondary_tags,     # 수정됨 (깔끔한 단어 나열)
-            weather_text_cleaned, # 수정됨 (괄호 제거)
-            updated_at          # 수정됨 (한국 시간)
+            date_display,       # A: Date
+            weather.get('stnId'), # B: STN
+            weather.get('stnNm'), # C: Region
+            avg_temp,           # D: Avg_Temp
+            max_temp,           # E: Max_Temp
+            min_temp,           # F: Min_Temp
+            precipitation,      # G: Precipitation
+            humidity,           # H: Humidity
+            cloud_cover,        # I: Cloud_Cover
+            di_val,             # J: DI
+            precip_type,        # K: Precip_Type
+            primary_tag,        # L: Primary_Tag
+            secondary_tags,     # M: Secondary_Tags
+            updated_at          # N: Updated_At (기존 Weather_Text 삭제됨)
         ]
 
         update_google_sheet(row)
