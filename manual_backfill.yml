@@ -1,0 +1,28 @@
+name: Manual Backfill Data
+
+on:
+  workflow_dispatch: # 수동 실행 전용
+
+jobs:
+  backfill-job:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 코드 가져오기
+        uses: actions/checkout@v3
+
+      - name: 파이썬 설정하기
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: 라이브러리 설치하기
+        run: |
+          pip install -r requirements.txt
+
+      - name: 과거 데이터 백필 실행
+        env:
+          KMA_API_KEY: ${{ secrets.KMA_API_KEY }}
+          GOOGLE_SHEET_KEY: ${{ secrets.GOOGLE_SHEET_KEY }}
+        run: |
+          python backfill.py
