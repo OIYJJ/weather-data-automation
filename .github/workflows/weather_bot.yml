@@ -1,0 +1,31 @@
+name: Daily Weather Update
+
+on:
+  schedule:
+    # 매일 한국 시간 낮 12시 00분 (UTC 03:00) 실행
+    - cron: '0 3 * * *'
+  workflow_dispatch: # 수동 실행 버튼 (테스트용)
+
+jobs:
+  update-sheet:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 코드 가져오기
+        uses: actions/checkout@v3
+
+      - name: 파이썬 설정하기
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: 라이브러리 설치하기
+        run: |
+          pip install -r requirements.txt
+
+      - name: 날씨 봇 실행하기
+        env:
+          KMA_API_KEY: ${{ secrets.KMA_API_KEY }}
+          GOOGLE_SHEET_KEY: ${{ secrets.GOOGLE_SHEET_KEY }}
+        run: |
+          python main.py
