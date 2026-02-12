@@ -2,8 +2,8 @@ name: Daily Weather Update
 
 on:
   schedule:
-    # 매일 한국 시간 낮 12시 00분 (UTC 03:00) 실행
-    - cron: '0 3 * * *'
+    # 매일 한국 시간 낮 11시 10분 (UTC 02:10) 실행
+    - cron: '10 2 * * *'
   workflow_dispatch: # 수동 실행 버튼 (테스트용)
 
 jobs:
