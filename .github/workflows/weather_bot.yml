@@ -2,30 +2,49 @@ name: Daily Weather Update
 
 on:
   schedule:
-    # 매일 한국 시간 낮 09시 20분 실행
+    # 매일 한국 시간 09:20 실행 = UTC 00:20
     - cron: '20 0 * * *'
-  workflow_dispatch: # 수동 실행 버튼 (테스트용)
+  workflow_dispatch:
+
+concurrency:
+  group: daily-weather-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   update-sheet:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 30
+
+    env:
+      TZ: Asia/Seoul
+      PYTHONUNBUFFERED: "1"
+      PYTHONIOENCODING: "utf-8"
+
     steps:
       - name: 코드 가져오기
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 파이썬 설정하기
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: 라이브러리 설치하기
         run: |
+          python -V
+          pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: 러너 시간 확인
+        run: |
+          echo "UTC  : $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "Local: $(date '+%Y-%m-%d %H:%M:%S %Z')"
 
       - name: 날씨 봇 실행하기
         env:
           KMA_API_KEY: ${{ secrets.KMA_API_KEY }}
           GOOGLE_SHEET_KEY: ${{ secrets.GOOGLE_SHEET_KEY }}
         run: |
+          set -euo pipefail
           python main.py
